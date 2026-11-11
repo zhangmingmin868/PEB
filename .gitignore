@@ -1,0 +1,9 @@
+build/
+dist/
+.venv/
+.venv-build/
+__pycache__/
+*.pyc
+installer/Output/
+*.spec.bak
+.DS_Store
