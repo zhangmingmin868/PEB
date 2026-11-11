@@ -28,9 +28,12 @@ jobs:
         run: python tests/selftest.py
 
       - name: UI smoke test (offscreen)
+        shell: cmd
         env:
           QT_QPA_PLATFORM: offscreen
-        run: python tests/selftest.py --ui
+        run: |
+          python tests/selftest.py --ui
+          echo selftest exit code %ERRORLEVEL%
 
       - name: PBE validation (FDA example + Excel workbook)
         run: |
