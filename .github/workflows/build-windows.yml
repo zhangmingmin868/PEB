@@ -6,6 +6,9 @@ on:
     tags: ["v*"]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   windows:
     runs-on: windows-latest
@@ -66,5 +69,15 @@ jobs:
         with:
           name: LabDream-Windows-3.0
           path: |
+            installer/Output/LabDream_Setup_3.0.exe
+            LabDream_3.0_portable.zip
+
+      - name: Publish release (public download)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v3.0-build-${{ github.run_number }}
+          name: LabDream Version 3.0 (APSD + PBE) - build ${{ github.run_number }}
+          body: Windows installer and portable version built from ${{ github.sha }}.
+          files: |
             installer/Output/LabDream_Setup_3.0.exe
             LabDream_3.0_portable.zip
