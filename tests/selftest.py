@@ -263,10 +263,22 @@ def pbe_ui_tests():
     print(f"pbe ui tests passed ({n} audit records)")
 
 
-if __name__ == "__main__":
+def _main():
     engine_tests()
     ecd_tests()
     security_tests()
     if "--ui" in sys.argv:
         ui_tests()
         pbe_ui_tests()
+
+
+if __name__ == "__main__":
+    try:
+        _main()
+    except BaseException:
+        import traceback
+        tb = traceback.format_exc()
+        print(tb)
+        if os.environ.get("GITHUB_ACTIONS"):
+            print("::error title=selftest::" + tb.replace("%", "%25").replace("\r", "").replace("\n", "%0A"))
+        sys.exit(1)
