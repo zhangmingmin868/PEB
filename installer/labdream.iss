@@ -30,7 +30,8 @@ PrivilegesRequiredOverridesAllowed=dialog
 ChangesAssociations=yes
 VersionInfoVersion=1.0.0.0
 VersionInfoProductName={#AppName}
-VersionInfoProductVersion={#AppFullName}
+VersionInfoProductVersion=1.0.0.0
+VersionInfoProductTextVersion={#AppFullName}
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
