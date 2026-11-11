@@ -10,6 +10,7 @@ from . import charts
 from .engine import analyse, mean_sd_rsd, NA, LOD
 from .fileio import APP_VERSION
 from .model import GROUP_OFF, HEADING_LABELS
+from .i18n import tr, trf
 
 EP, USP, GRAPHICAL, TABULAR, GROUPS = "ep", "usp", "graphical", "tabular", "groups"
 MEAN = "Mean"
@@ -24,8 +25,8 @@ def f5(v):
 
 
 def short_name(ds):
-    n = ds.dev.name
-    return n.split(" (")[0]
+    n = tr(ds.dev.name)
+    return n.split(" (")[0].split("（")[0]
 
 
 class Page:
@@ -73,12 +74,13 @@ class Page:
 
 
 class ReportRenderer:
-    def __init__(self, ds, selections, printed_at=None):
+    def __init__(self, ds, selections, printed_at=None, printed_by=""):
         """selections: list of (kind, first_run, last_run) ; run index 1-based or MEAN."""
         self.ds = ds
         self.summary = analyse(ds)
         self.sel = selections
         self.printed_at = printed_at or _dt.datetime.now()
+        self.printed_by = printed_by
         self._pages = self._plan()
 
     # ------------------------------------------------------------------
@@ -138,8 +140,8 @@ class ReportRenderer:
     def _footer(self, pg: Page, n):
         y = pg.H - 6
         pg.text(0, y, 80, 5, APP_VERSION, size=8)
-        pg.text(0, y, pg.W, 5, f"Page {n} of {self.page_count}", Qt.AlignHCenter | Qt.AlignVCenter, size=8)
-        pg.text(pg.W - 90, y, 90, 5, self.printed_at.strftime("%a %b %d %H:%M:%S %Y"),
+        pg.text(0, y, pg.W, 5, trf("Page {n} of {m}", n=n, m=self.page_count), Qt.AlignHCenter | Qt.AlignVCenter, size=8)
+        pg.text(pg.W - 90, y, 90, 5, (trf("Printed by {u}", u=self.printed_by) + "   " if self.printed_by else "") + self.printed_at.strftime("%Y-%m-%d %H:%M:%S"),
                 Qt.AlignRight | Qt.AlignVCenter, size=8)
 
     def _header(self, pg: Page, title, y=0.0):
@@ -154,12 +156,12 @@ class ReportRenderer:
         lh = 3.6
         cw = pg.W / 4
         for i, (lab, val) in enumerate(left[:8]):
-            pg.text(4, y + i * lh, cw, lh, lab, size=8, bold=True)
+            pg.text(4, y + i * lh, cw, lh, tr(lab), size=8, bold=True)
             if lab not in HEADING_LABELS:
                 pg.text(4 + cw, y + i * lh, cw, lh, val, size=8)
         rlist = [left[8]] + right
         for i, (lab, val) in enumerate(rlist[:8]):
-            pg.text(4 + 2 * cw, y + i * lh, cw, lh, lab, size=8, bold=True)
+            pg.text(4 + 2 * cw, y + i * lh, cw, lh, tr(lab), size=8, bold=True)
             if lab not in HEADING_LABELS:
                 pg.text(4 + 3 * cw, y + i * lh, cw - 4, lh, val, size=8)
         y += 8 * lh + 1
@@ -218,18 +220,18 @@ class ReportRenderer:
 
     def _run_info(self, pg, res, y):
         ds = self.ds
-        pg.text(0, y, 100, 4, f"Other Info : {ds.other_info}", size=8)
+        pg.text(0, y, 100, 4, f"{tr('Other Info')} : {ds.other_info}", size=8)
         y += 4
-        run_lab = "Mean" if res.run == MEAN else str(res.run)
-        pg.text(0, y, 50, 4, "Run Number =", size=8)
+        run_lab = tr("Mean") if res.run == MEAN else str(res.run)
+        pg.text(0, y, 50, 4, tr("Run Number ="), size=8)
         pg.text(55, y, 30, 4, run_lab, size=8)
-        pg.text(100, y, 60, 4, "Sampling Flow rate (l/min) =", size=8)
+        pg.text(100, y, 60, 4, tr("Sampling Flow rate (l/min) ="), size=8)
         pg.text(160, y, 30, 4, f5(res.flow), Qt.AlignHCenter | Qt.AlignVCenter, size=8)
         y += 4
-        pg.text(0, y, 50, 4, "Number of discharges =", size=8)
+        pg.text(0, y, 50, 4, tr("Number of discharges ="), size=8)
         pg.text(55, y, 30, 4, f"{res.doses:g}" if isinstance(res.doses, (int, float)) else "", size=8)
         if ds.report_shot_weight:
-            pg.text(100, y, 60, 4, "Shot Weight, mean +/- sd [mg] =", size=8)
+            pg.text(100, y, 60, 4, tr("Shot Weight, mean +/- sd [mg] ="), size=8)
             pg.text(160, y, 40, 4, f"{f5(res.shot_weight_mean)}+/-{f5(res.shot_weight_sd)}",
                     Qt.AlignHCenter | Qt.AlignVCenter, size=8)
         y += 5
@@ -238,14 +240,14 @@ class ReportRenderer:
 
     def _cu_lines(self, pg, res, y, usp=False):
         u = self.ds.unit
-        pg.text(0, y, pg.W, 4, f"(1) Total mass of active ingredient, less device deposition per discharge [{u}] = {f5(res.delivered_calc)}", size=8, bold=False)
+        pg.text(0, y, pg.W, 4, trf("(1) Total mass of active ingredient, less device deposition per discharge [{u}] = {v}", u=u, v=f5(res.delivered_calc)), size=8, bold=False)
         y += 3.8
         de = res.delivered_entered
-        pg.text(0, y, pg.W, 4, f"(2) Mean delivered dose determined during testing for uniformity of delivered dose [{u}] = {f5(de)}", size=8)
+        pg.text(0, y, pg.W, 4, trf("(2) Mean delivered dose determined during testing for uniformity of delivered dose [{u}] = {v}", u=u, v=f5(de)), size=8)
         y += 3.8
         for k, (lo, hi, pct, com) in enumerate(res.cu):
-            s = f"({k+3}) Total mass of active substance within {lo}-{hi}% of mean delivered dose : "
-            s += ("Error - " + com) if pct is None else f"{pct:.1f}% - {com}"
+            s = trf("({k}) Total mass of active substance within {lo}-{hi}% of mean delivered dose : ", k=k + 3, lo=lo, hi=hi)
+            s += (tr("Error") + " - " + tr(com)) if pct is None else f"{pct:.1f}% - {tr(com)}"
             pg.text(0, y, pg.W, 4, s, size=8)
             y += 3.8
         return y + 2
@@ -254,12 +256,12 @@ class ReportRenderer:
         ds = self.ds
         u = ds.unit
         if ds.fpd_by_stage:
-            spec = f"{ds.row_titles[ds.fpd_stage_row]} to {ds.row_titles[-1]}"
+            spec = trf("{a} to {b}", a=tr(ds.row_titles[ds.fpd_stage_row]), b=tr(ds.row_titles[-1]))
         else:
-            spec = f"Less than or Equal to {ds.fpd_size:.5f} µm"
+            spec = trf("Less than or Equal to {d} µm", d=f"{ds.fpd_size:.5f}")
         lines = [(f"{spec} [{u}] =", f5(res.fpd))]
         if usp:
-            lines.append((f"Fine Particle Fraction, {spec} [%] =", f5(res.fpf)))
+            lines.append((f"{tr('Fine Particle Fraction')}, {spec} [%] =", f5(res.fpf)))
         lines += [("MMAD [µm] =", f5(res.mmad)), ("GSD =", f5(res.gsd))]
         for lab, val in lines:
             pg.text(0, y, 120, 4, lab, size=8.5)
@@ -272,35 +274,35 @@ class ReportRenderer:
         charts.draw_probit(pg.p, pg.rect(0, y, pg.W * 0.47, h), res, fs=7.5)
         charts.draw_deposition(pg.p, self.ds, res, pg.rect(pg.W * 0.52, y, pg.W * 0.48, h), fs=7.5)
         y += h + 4
-        pg.text(0, y, 80, 4, "Log-Probit Graph Regression:", size=8.5, bold=True)
+        pg.text(0, y, 80, 4, tr("Log-Probit Graph Regression:"), size=8.5, bold=True)
         y += 4
         n = res.n_reg if isinstance(res.n_reg, (int, float)) else 0
-        vals = [("Intercept =", f5(res.intercept)), ("Slope =", f5(res.slope)),
+        vals = [(tr("Intercept") + " =", f5(res.intercept)), (tr("Slope") + " =", f5(res.slope)),
                 ("R^2 =", f5(res.r2)), ("n =", f"{n:g}" if isinstance(n, (int, float)) else n)]
         for lab, v in vals:
             pg.text(0, y, 60, 4, lab, size=8.5)
             pg.text(65, y, 40, 4, v, size=8.5)
             y += 4
         y += 3
-        pg.text(0, y, 120, 4, f"File Name : {self.ds.file_name}", size=8.5)
+        pg.text(0, y, 120, 4, f"{tr('File Name')} : {self.ds.file_name}", size=8.5)
         y += 8
-        pg.text(0, y, 60, 4, "Data Input by:", size=8.5)
-        pg.text(80, y, 40, 4, "Date:", size=8.5)
+        pg.text(0, y, 60, 4, tr("Data Input by:"), size=8.5)
+        pg.text(80, y, 40, 4, tr("Date:"), size=8.5)
         y += 8
-        pg.text(0, y, 60, 4, "Data Checked by:", size=8.5)
-        pg.text(80, y, 40, 4, "Date:", size=8.5)
+        pg.text(0, y, 60, 4, tr("Data Checked by:"), size=8.5)
+        pg.text(80, y, 40, 4, tr("Date:"), size=8.5)
 
     # ------------------------------------------------------------------
     def _page_ep(self, pg: Page, run):
         ds = self.ds
         res = self._result(run)
-        y = self._header(pg, f"Results and Analysis (EP Method) for {short_name(ds)}")
+        y = self._header(pg, trf("Results and Analysis (EP Method) for {d}", d=short_name(ds)))
         y = self._run_info(pg, res, y)
         u = ds.unit
         cols = [0, pg.W * 0.25, pg.W * 0.5, pg.W * 0.75]
-        heads = ["Cut-off\nDiameter\n[µm]", f"Mass of active ingredient\ndeposited per discharge\n[{u}]",
-                 f"Cumulative mass of active\ningredient deposited per\ndischarge [{u}]",
-                 "Cumulative fraction of\nactive ingredient deposited\nper discharge [%]"]
+        heads = [tr("Cut-off\nDiameter\n[µm]"), tr("Mass of active ingredient\ndeposited per discharge") + f"\n[{u}]",
+                 tr("Cumulative mass of active\ningredient deposited per\ndischarge") + f" [{u}]",
+                 tr("Cumulative fraction of\nactive ingredient deposited\nper discharge [%]")]
         for c, hd in zip(cols, heads):
             pg.text(c, y, pg.W / 4, 11, hd, Qt.AlignCenter, size=8, bold=True)
         y += 12
@@ -321,11 +323,11 @@ class ReportRenderer:
     def _page_usp(self, pg: Page, run):
         ds = self.ds
         res = self._result(run)
-        y = self._header(pg, f"Results and Analysis (USP Method) for {short_name(ds)}")
+        y = self._header(pg, trf("Results and Analysis (USP Method) for {d}", d=short_name(ds)))
         y = self._run_info(pg, res, y)
         u = ds.unit
         cols = [0, pg.W * 0.2, pg.W * 0.4, pg.W * 0.6, pg.W * 0.8]
-        heads = ["Stage", f"Mass A\n\n[{u}]", f"Mass B\n\n[{u}]", "Cum. % of\nmass less than\nstated diameter", "<D50\n\n[µm]"]
+        heads = [tr("Stage"), tr("Mass A") + f"\n\n[{u}]", tr("Mass B") + f"\n\n[{u}]", tr("Cum. % of\nmass less than\nstated diameter"), "<D50\n\n[µm]"]
         for c, hd in zip(cols, heads):
             pg.text(c, y, pg.W / 5, 11, hd, Qt.AlignCenter, size=8, bold=True)
         y += 12
@@ -334,7 +336,7 @@ class ReportRenderer:
         size_rows = set()
         for (row, cut, m, cum, pc) in res.cum_table:
             size_rows.add(row)
-            vals = [ds.row_titles[row], f5(m), f5(m), f5(pc), f5(cut) if cut else "---"]
+            vals = [tr(ds.row_titles[row]), f5(m), f5(m), f5(pc), f5(cut) if cut else "---"]
             for c, v in zip(cols, vals):
                 pg.text(c, y, pg.W / 5, 3.6, v, Qt.AlignCenter, size=8)
             y += 3.6
@@ -343,13 +345,13 @@ class ReportRenderer:
         extra = [r for r in range(ds.n_rows - 1, 0, -1) if r not in size_rows and ds.row_active(r)]
         for r in extra:
             m = res.masses_per_dose[r]
-            name = "M.A./I.P." if r == 1 else ds.row_titles[r]
+            name = "M.A./I.P." if r == 1 else tr(ds.row_titles[r])
             pg.text(cols[0], y, pg.W / 5, 3.6, name, Qt.AlignCenter, size=8)
             pg.text(cols[1], y, pg.W / 5, 3.6, f5(m), Qt.AlignCenter, size=8)
             sum_a += m
             y += 3.6
         y += 2
-        pg.text(cols[0], y, pg.W / 5, 4, "Sum of Masses", Qt.AlignCenter, size=8)
+        pg.text(cols[0], y, pg.W / 5, 4, tr("Sum of Masses"), Qt.AlignCenter, size=8)
         pg.text(cols[1], y, pg.W / 5, 4, f"{f5(sum_a)} (A)", Qt.AlignCenter, size=8)
         pg.text(cols[2], y, pg.W / 5, 4, f"{f5(sum_b)} (B)", Qt.AlignCenter, size=8)
         y += 5
@@ -361,44 +363,44 @@ class ReportRenderer:
 
     def _page_graphical(self, pg: Page, runs):
         ds = self.ds
-        y = self._header(pg, f"Graphical Summary for {short_name(ds)}")
-        pg.text(0, y, 150, 4, f"Other Info : {ds.other_info}", size=8)
-        pg.text(pg.W - 100, y, 100, 4, f"File Name: {ds.file_name}", Qt.AlignRight | Qt.AlignVCenter, size=8)
+        y = self._header(pg, trf("Graphical Summary for {d}", d=short_name(ds)))
+        pg.text(0, y, 150, 4, f"{tr('Other Info')} : {ds.other_info}", size=8)
+        pg.text(pg.W - 100, y, 100, 4, f"{tr('File Name')}: {ds.file_name}", Qt.AlignRight | Qt.AlignVCenter, size=8)
         y += 5
         avail = pg.H - y - 10
         rh = avail / 3
         for i, run in enumerate(runs):
             res = self.summary.runs[run - 1]
             yy = y + i * rh
-            pg.text(0, yy, 15, 4, f"Run {run}", size=8.5, bold=True)
-            pg.text(15, yy, 90, 4, f"Sampling Flow Rate (l/min) = {res.flow:.2f}", size=8.5)
+            pg.text(0, yy, 15, 4, trf("Run {n}", n=run), size=8.5, bold=True)
+            pg.text(15, yy, 90, 4, f"{tr('Sampling Flow rate (l/min) =')} {res.flow:.2f}", size=8.5)
             w3 = pg.W / 3
             charts.draw_probit(pg.p, pg.rect(0, yy + 4, w3 - 4, rh - 6), res, fs=6.5)
             charts.draw_deposition(pg.p, ds, res, pg.rect(w3, yy + 4, w3 - 4, rh - 6),
-                                   title="Drug Mass Distribution", fs=6.5)
+                                   title=tr("Drug Mass Distribution"), fs=6.5)
             charts.draw_cumulative(pg.p, res, pg.rect(2 * w3, yy + 4, w3, rh - 6), fs=6.5)
 
     def _page_tabular(self, pg: Page, _):
         ds = self.ds
-        y = self._header(pg, f"Tabular Summary for {short_name(ds)}")
+        y = self._header(pg, trf("Tabular Summary for {d}", d=short_name(ds)))
         if ds.fpd_by_stage:
-            spec = f"{ds.row_titles[ds.fpd_stage_row]} to {ds.row_titles[-1]}"
+            spec = trf("{a} to {b}", a=tr(ds.row_titles[ds.fpd_stage_row]), b=tr(ds.row_titles[-1]))
         else:
-            spec = f"Less than or Equal to {ds.fpd_size:.1f}um"
-        pg.text(0, y, 150, 4, f"Other Info : {ds.other_info}", size=8)
-        pg.text(pg.W - 120, y, 120, 4, f"Fine Particle Dose Spec, {spec}", Qt.AlignRight | Qt.AlignVCenter, size=8)
+            spec = trf("Less than or Equal to {d} µm", d=f"{ds.fpd_size:.1f}")
+        pg.text(0, y, 150, 4, f"{tr('Other Info')} : {ds.other_info}", size=8)
+        pg.text(pg.W - 120, y, 120, 4, f"{tr('Fine Particle Dose Spec.')} {spec}", Qt.AlignRight | Qt.AlignVCenter, size=8)
         y += 4
-        pg.text(pg.W - 120, y, 120, 4, f"File Name: {ds.file_name}", Qt.AlignRight | Qt.AlignVCenter, size=8)
+        pg.text(pg.W - 120, y, 120, 4, f"{tr('File Name')}: {ds.file_name}", Qt.AlignRight | Qt.AlignVCenter, size=8)
         y += 6
         u = ds.unit
-        heads = ["Run\nNo.", "Dose\nNos.", "No. of\nDoses\nSampled", "Flow\nRate\nSampled",
-                 f"Metered\n\n[{u}]", f"Delivered\n\n[{u}]", f"Fine Particle\n\n[{u}]", "Fine Particle\n\n%",
-                 "MMAD\n\n[µm]", "GSD", "R^2", "n", "Intercept", "Slope"]
+        heads = [tr("Run\nNo."), tr("Dose\nNos."), tr("No. of\nDoses\nSampled"), tr("Flow\nRate\nSampled"),
+                 tr("Metered") + f"\n\n[{u}]", tr("Delivered") + f"\n\n[{u}]", tr("Fine Particle") + f"\n\n[{u}]", tr("Fine Particle") + "\n\n%",
+                 "MMAD\n\n[µm]", "GSD", "R^2", "n", tr("Intercept"), tr("Slope")]
         widths = [10, 18, 16, 16, 20, 20, 22, 20, 18, 16, 16, 12, 20, 20]
         scale = pg.W / sum(widths)
         widths = [w * scale for w in widths]
         xs = [sum(widths[:i]) for i in range(len(widths))]
-        pg.text(0, y, pg.W, 4, "Dose and Post Throat Particle Size Characterisation", size=8, bold=True)
+        pg.text(0, y, pg.W, 4, tr("Dose and Post Throat Particle Size Characterisation"), size=8, bold=True)
         y += 4.5
         pg.line(0, y, pg.W, y, 0.2)
         for x, w, hd in zip(xs, widths, heads):
@@ -423,7 +425,7 @@ class ReportRenderer:
             for x, w, v in zip(xs, widths, vals):
                 pg.text(x, y, w, 3.6, v, Qt.AlignCenter, size=7.5)
             y += 3.6
-        for lab, idx in (("Mean", 0), ("SD", 1), ("%RSD", 2)):
+        for lab, idx in ((tr("Mean"), 0), (tr("SD"), 1), (tr("%RSD"), 2)):
             vals = [lab, ""]
             for k, g in enumerate(getters):
                 st = mean_sd_rsd([g(r) for r in runs if isinstance(g(r), (int, float))])
@@ -440,23 +442,23 @@ class ReportRenderer:
         y += 1
         pg.line(0, y, pg.W, y, 0.2)
         y += 6
-        pg.text(0, y, 60, 4, "Data Input by:", size=8)
-        pg.text(70, y, 40, 4, "Date:", size=8)
-        pg.text(140, y, 60, 4, "Data Checked by:", size=8)
-        pg.text(210, y, 40, 4, "Date:", size=8)
+        pg.text(0, y, 60, 4, tr("Data Input by:"), size=8)
+        pg.text(70, y, 40, 4, tr("Date:"), size=8)
+        pg.text(140, y, 60, 4, tr("Data Checked by:"), size=8)
+        pg.text(210, y, 40, 4, tr("Date:"), size=8)
 
     def _page_groups(self, pg: Page, _):
         ds = self.ds
-        y = self._header(pg, f"Group Results for {short_name(ds)}")
-        pg.text(0, y, 150, 4, f"Other Info : {ds.other_info}", size=8)
-        pg.text(pg.W - 100, y, 100, 4, f"File Name: {ds.file_name}", Qt.AlignRight | Qt.AlignVCenter, size=8)
+        y = self._header(pg, trf("Group Results for {d}", d=short_name(ds)))
+        pg.text(0, y, 150, 4, f"{tr('Other Info')} : {ds.other_info}", size=8)
+        pg.text(pg.W - 100, y, 100, 4, f"{tr('File Name')}: {ds.file_name}", Qt.AlignRight | Qt.AlignVCenter, size=8)
         y += 6
         runs = self.summary.runs
         n = len(runs)
         u = ds.unit
         lw = 52
         cw = (pg.W - lw) / (n + 3)
-        heads = [f"Run {r.run}" for r in runs] + ["Mean", "SD", "%RSD"]
+        heads = [trf("Run {n}", n=r.run) for r in runs] + [tr("Mean"), tr("SD"), tr("%RSD")]
         pg.line(0, y, pg.W, y, 0.2)
         for i, hd in enumerate(heads):
             pg.text(lw + i * cw, y + 0.5, cw, 4, hd, Qt.AlignCenter, size=7.5, bold=True)
@@ -467,10 +469,10 @@ class ReportRenderer:
             if ds.groups[g].mode == GROUP_OFF:
                 continue
             gr0 = runs[0].groups[g]
-            pg.text(0, y, 20, 3.8, f"Group {g+1}", size=7.5, bold=True)
-            pg.text(0, y + 3.8, 26, 3.8, f"From  {gr0.label_from}", size=7.5)
-            pg.text(0, y + 7.6, 26, 3.8, f"To    {gr0.label_to}", size=7.5)
-            for k, (lab, attr) in enumerate(((f"Particle Dose [{u}]", "dose"), ("Particle Fraction [%]", "fraction"))):
+            pg.text(0, y, 20, 3.8, trf("Group {n}", n=g + 1), size=7.5, bold=True)
+            pg.text(0, y + 3.8, 26, 3.8, f"{tr('From')}  {gr0.label_from}", size=7.5)
+            pg.text(0, y + 7.6, 26, 3.8, f"{tr('To')}    {gr0.label_to}", size=7.5)
+            for k, (lab, attr) in enumerate(((f"{tr('Particle Dose')} [{u}]", "dose"), (f"{tr('Particle Fraction')} [%]", "fraction"))):
                 yy = y + 3.8 + k * 3.8
                 pg.text(26, yy, lw - 26, 3.8, lab, size=7.5)
                 vals = [getattr(r.groups[g], attr) for r in runs]
@@ -481,7 +483,7 @@ class ReportRenderer:
             pg.line(0, y, pg.W, y, 0.1)
             y += 1
         y += 6
-        pg.text(0, y, 60, 4, "Data Input by:", size=8)
-        pg.text(70, y, 40, 4, "Date:", size=8)
-        pg.text(140, y, 60, 4, "Data Checked by:", size=8)
-        pg.text(210, y, 40, 4, "Date:", size=8)
+        pg.text(0, y, 60, 4, tr("Data Input by:"), size=8)
+        pg.text(70, y, 40, 4, tr("Date:"), size=8)
+        pg.text(140, y, 60, 4, tr("Data Checked by:"), size=8)
+        pg.text(210, y, 40, 4, tr("Date:"), size=8)

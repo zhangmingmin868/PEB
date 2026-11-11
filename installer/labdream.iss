@@ -3,8 +3,8 @@
 ; Output: installer\Output\LabDream_Setup_1.0.exe
 
 #define AppName "LabDream"
-#define AppVersion "1.0"
-#define AppFullName "LabDream Version 1.0"
+#define AppVersion "2.0"
+#define AppFullName "LabDream Version 2.0"
 #define AppExe "LabDream.exe"
 
 [Setup]
@@ -28,9 +28,9 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequiredOverridesAllowed=dialog
 ChangesAssociations=yes
-VersionInfoVersion=1.0.0.0
+VersionInfoVersion=2.0.0.0
 VersionInfoProductName={#AppName}
-VersionInfoProductVersion=1.0.0.0
+VersionInfoProductVersion=2.0.0.0
 VersionInfoProductTextVersion={#AppFullName}
 
 [Languages]
@@ -39,6 +39,10 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 Name: "assoc"; Description: "Open .ldd data files with LabDream"; GroupDescription: "File types:"
+
+[Dirs]
+; shared user database and audit trail, writable by all users of the PC
+Name: "{commonappdata}\LabDream"; Permissions: users-modify
 
 [Files]
 Source: "..\dist\LabDream\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs

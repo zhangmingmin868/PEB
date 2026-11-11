@@ -72,6 +72,12 @@ class Dataset:
     report_shot_weight: bool = False
     runs: List[Run] = field(default_factory=list)
     file_name: str = ""
+    # record keeping
+    created_by: str = ""
+    created_at: str = ""
+    modified_by: str = ""
+    modified_at: str = ""
+    revision: int = 0
 
     # ------------------------------------------------------------------
     @property
@@ -161,3 +167,41 @@ def new_dataset(device: str) -> Dataset:
     ds.info[0][1] = _dt.date.today().strftime("%d-%b-%y")
     ds.normalise()
     return ds
+
+
+# ----------------------------------------------------------------------
+_TRACKED = ["device", "cal_flow", "other_info", "n_runs", "unit_mg", "show_presep", "remove_stage6",
+            "remove_stage7", "fpd_by_stage", "fpd_stage_row", "fpd_size", "r2_limit", "report_shot_weight"]
+_RUN_FIELDS = ["dose_no", "flow", "doses", "delivered", "shot_weight_mean", "shot_weight_sd"]
+
+
+def diff_datasets(old: "Dataset", new: "Dataset") -> List[str]:
+    """Human-readable list of changes between two versions of a data file."""
+    out = []
+    if old is None:
+        return out
+
+    def ch(label, a, b):
+        if a != b:
+            out.append(f"{label}: {a!r} -> {b!r}")
+
+    for f in _TRACKED:
+        ch(f, getattr(old, f), getattr(new, f))
+    for i, (a, b) in enumerate(zip(old.row_titles, new.row_titles)):
+        ch(f"Stage title [{i}]", a, b)
+    for i, (a, b) in enumerate(zip(old.ecd, new.ecd)):
+        if abs(a - b) > 1e-12:
+            ch(f"ECD {new.row_titles[3 + i] if 3 + i < len(new.row_titles) else i}", round(a, 6), round(b, 6))
+    for (la, va), (lb, vb) in zip(old.info, new.info):
+        ch(f"Info '{lb}' label", la, lb)
+        ch(f"Info '{lb}'", va, vb)
+    for g, (a, b) in enumerate(zip(old.groups, new.groups)):
+        if a != b:
+            out.append(f"Group {g + 1}: {a} -> {b}")
+    for j, (ra, rb) in enumerate(zip(old.runs, new.runs)):
+        for f in _RUN_FIELDS:
+            ch(f"Run {j + 1} {f}", getattr(ra, f), getattr(rb, f))
+        for r, (ma, mb) in enumerate(zip(ra.masses, rb.masses)):
+            title = new.row_titles[r] if r < len(new.row_titles) else str(r)
+            ch(f"Run {j + 1} {title}", ma, mb)
+    return out

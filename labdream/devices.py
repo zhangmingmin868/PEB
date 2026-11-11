@@ -109,18 +109,48 @@ DEVICES = {
 DEVICE_ORDER = [CI, MSLI, MMI, NGI]
 
 
+# NGI below 30 L/min: reference values at 15 L/min and their flow exponents
+NGI_LOW_FLOW = 15.0
+NGI_LOW_ECD = [14.10, 8.61, 5.39, 3.30, 2.08, 1.36, 0.98, 0.0]
+NGI_LOW_EXP = [0.2692, 0.4279, 0.4339, 0.5208, 0.6130, 0.7124, 0.8598, 0.0]
+NGI_SWITCH_FLOW = 30.0
+
+
+def factory_ecd(dev: DeviceDef, flow: float) -> List[float]:
+    """Manufacturer cut-off diameters (µm) of every stage at ``flow`` (L/min).
+
+    CI   : ECD = ECD(28.3) * (28.3/Q)^0.5
+    MSLI : ECD = ECD(60)   * (60/Q)^0.5
+    MMI  : ECD = ECD(60)   * (60/Q)^0.5
+    NGI  : 30–100 L/min  ECD = ECD(60) * (60/Q)^x   (x per stage)
+           15–30 L/min   ECD = ECD(15) * (15/Q)^x   (x per stage)
+    """
+    if flow <= 0:
+        return list(dev.default_ecd)
+    if dev.scaling == "ngi":
+        if flow < NGI_SWITCH_FLOW:
+            return [d * (NGI_LOW_FLOW / flow) ** x if d > 0 else 0.0
+                    for d, x in zip(NGI_LOW_ECD, NGI_LOW_EXP)]
+        return [d * (dev.default_cal_flow / flow) ** x if d > 0 else 0.0
+                for d, x in zip(dev.default_ecd, dev.ngi_exponents)]
+    return [d * math.sqrt(dev.default_cal_flow / flow) if d > 0 else 0.0
+            for d in dev.default_ecd]
+
+
 def scaled_ecd(dev: DeviceDef, cal_flow: float, ecd: List[float], flow: float) -> List[float]:
-    """Cut-off diameters at the actual sampling flow ``flow``."""
-    out = []
-    if flow <= 0 or cal_flow <= 0:
+    """Cut-off diameters at the actual sampling flow ``flow``.
+
+    ``ecd`` are the (possibly user-calibrated) diameters at ``cal_flow``.  Each
+    is moved to ``flow`` with the same ratio the manufacturer values follow.
+    """
+    if flow <= 0 or cal_flow <= 0 or abs(flow - cal_flow) < 1e-12:
         return list(ecd)
+    at_cal = factory_ecd(dev, cal_flow)
+    at_q = factory_ecd(dev, flow)
+    out = []
     for i, d in enumerate(ecd):
-        if d <= 0:
+        if d <= 0 or i >= len(at_cal) or at_cal[i] <= 0:
             out.append(0.0)
-            continue
-        if dev.scaling == "ngi" and dev.ngi_exponents:
-            x = dev.ngi_exponents[i] if i < len(dev.ngi_exponents) else 0.5
-            out.append(d * (cal_flow / flow) ** x)
         else:
-            out.append(d * math.sqrt(cal_flow / flow))
+            out.append(d * at_q[i] / at_cal[i])
     return out

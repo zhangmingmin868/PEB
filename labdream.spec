@@ -44,8 +44,8 @@ if sys.platform == "darwin":
         info_plist={
             "CFBundleName": "LabDream",
             "CFBundleDisplayName": "LabDream",
-            "CFBundleShortVersionString": "1.0",
-            "CFBundleVersion": "1.0",
+            "CFBundleShortVersionString": "2.0",
+            "CFBundleVersion": "2.0",
             "NSHighResolutionCapable": True,
         },
     )

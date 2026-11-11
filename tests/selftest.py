@@ -11,8 +11,8 @@ from statistics import NormalDist
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from labdream import fileio                       # noqa: E402
-from labdream.devices import DEVICE_ORDER, scaled_ecd  # noqa: E402
+from labdream import fileio, session              # noqa: E402
+from labdream.devices import DEVICES, DEVICE_ORDER, factory_ecd, scaled_ecd  # noqa: E402
 from labdream.engine import analyse, NA            # noqa: E402
 from labdream.model import new_dataset             # noqa: E402
 
@@ -78,6 +78,69 @@ def engine_tests():
     print(f"engine tests passed ({n} distributions)")
 
 
+def ecd_tests():
+    """ECDs at other flow rates must equal the reference tables (Ph. Eur. 2.9.18 / USP <601>)."""
+    ref = {
+        ("NGI", 15): [14.10, 8.61, 5.39, 3.30, 2.08, 1.36, 0.98],
+        ("NGI", 29): [11.80716, 6.49370, 4.04912, 2.34102, 1.38854, 0.85030, 0.55598],
+        ("NGI", 30): [11.71902, 6.39544, 3.98808, 2.29928, 1.35729, 0.83364, 0.54096],
+        ("NGI", 90): [6.47509, 3.61216, 2.30252, 1.37197, 0.75823, 0.43123, 0.25912],
+        ("CI", 60): [6.18102, 3.98332, 3.22787, 2.26637, 1.44224, 0.75546, 0.48075, 0.29532],
+        ("CI", 90): [5.04678, 3.25237, 2.63554, 1.85049, 1.17758, 0.61683, 0.39253, 0.24112],
+        ("MSLI", 30): [18.38478, 9.61665, 4.38406, 2.40416],
+        ("MMI", 90): [8.16497, 4.08248, 2.04124, 1.02062, 0.51031],
+    }
+    for (dev, q), vals in ref.items():
+        got = factory_ecd(DEVICES[dev], q)
+        for a, b in zip(got, vals):
+            check(abs(a - b) < 6e-5, f"{dev} @ {q}: {a} != {b}")
+    # scaling a calibration at 15 L/min to 30 L/min follows the same tables
+    ngi = DEVICES["NGI"]
+    s = scaled_ecd(ngi, 15, factory_ecd(ngi, 15), 30)
+    check(all(abs(a - b) < 1e-3 for a, b in zip(s, factory_ecd(ngi, 30))), "NGI 15->30 scaling")
+    print("ecd tests passed")
+
+
+def security_tests():
+    from labdream.security import Store, AuthError
+    with tempfile.TemporaryDirectory() as d:
+        st = Store(os.path.join(d, "t.db"))
+        check(not st.has_users(), "empty")
+        st.create_user("SYSTEM", "admin", "Admin", "admin", "secret123", must_change=False)
+        st.create_user("admin", "ana", "Ana", "analyst", "start1234")
+        try:
+            st.create_user("admin", "bad", "", "analyst", "short")
+            check(False, "weak password accepted")
+        except ValueError:
+            pass
+        u = st.authenticate("ana", "start1234")
+        check(u.must_change and u.can("edit_data") and not u.can("manage_users"), "analyst rights")
+        st.change_password("ana", "start1234", "newpass99")
+        for _ in range(5):
+            try:
+                st.authenticate("ana", "wrong")
+            except AuthError:
+                pass
+        check(st.get("ana").locked, "lockout after 5 failures")
+        st.unlock("admin", "ana")
+        check(st.authenticate("ana", "newpass99").username == "ana", "unlock")
+        try:
+            st.update_user("admin", "admin", "Admin", "analyst", True)
+            check(False, "last admin demoted")
+        except ValueError:
+            pass
+        ok, n, _ = st.verify()
+        check(ok and n > 5, "audit chain")
+        # tampering is detected even when the triggers are bypassed
+        st.db.execute("DROP TRIGGER audit_no_update")
+        st.db.execute("UPDATE audit SET details='{}' WHERE id=2")
+        st.db.commit()
+        ok, n, bad = st.verify()
+        check(not ok and bad == 2, "tamper detection")
+        st.db.close()
+    print("security tests passed")
+
+
 def ui_tests():
     from PySide6.QtGui import QPdfWriter
     from PySide6.QtWidgets import QApplication
@@ -85,7 +148,16 @@ def ui_tests():
     from labdream.ui.main_window import MainWindow
     from labdream.ui.wizard import DataWizard
 
+    from labdream.i18n import set_language
     app = QApplication.instance() or QApplication(sys.argv)
+    tmp = tempfile.mkdtemp()
+    st = session.init(os.path.join(tmp, "ui.db"))
+    st.create_user("SYSTEM", "admin", "Admin", "admin", "secret123", must_change=False)
+    session.user = st.authenticate("admin", "secret123")
+    for lang in ("zh", "es", "fr", "en"):
+        set_language(lang)
+        MainWindow().close()                     # closing the main window logs out
+        session.user = st.get("admin")
     mw = MainWindow()
     mw.show()
     with tempfile.TemporaryDirectory() as d:
@@ -94,6 +166,7 @@ def ui_tests():
             ds.n_runs = 3
             for j in (1, 2):
                 ds.runs[j] = ds.runs[0]
+            check(session.can("edit_data"), "logged in")
             wiz = DataWizard(ds, None, mw)
             wiz.show()
             for i in range(3):
@@ -103,7 +176,8 @@ def ui_tests():
             sel = [(reports.EP, "1", reports.MEAN), (reports.USP, "1", "1"),
                    (reports.GRAPHICAL, None, None), (reports.TABULAR, None, None),
                    (reports.GROUPS, None, None)]
-            rr = reports.ReportRenderer(ds, sel)
+            set_language(["en", "zh", "es", "fr"][DEVICE_ORDER.index(dev)])
+            rr = reports.ReportRenderer(ds, sel, printed_by="admin")
             w = QPdfWriter(os.path.join(d, f"{dev}.pdf"))
             w.setResolution(100)
             rr.render(w)
@@ -116,5 +190,7 @@ def ui_tests():
 
 if __name__ == "__main__":
     engine_tests()
+    ecd_tests()
+    security_tests()
     if "--ui" in sys.argv:
         ui_tests()

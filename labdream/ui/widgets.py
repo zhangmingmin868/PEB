@@ -94,9 +94,9 @@ class ChartWidget(QWidget):
             return
         t = self.title
         if self.kind == self.PROBIT:
-            charts.draw_probit(p, r, self.res, title=t or "Log-Probit Plot", fs=7)
+            charts.draw_probit(p, r, self.res, title=t or None, fs=7)
         elif self.kind == self.DEPOSITION:
-            charts.draw_deposition(p, self.ds, self.res, r, title=t or "Drug Mass Distribution",
+            charts.draw_deposition(p, self.ds, self.res, r, title=t or None,
                                    show_throat=self.show_throat, fs=7)
         else:
-            charts.draw_cumulative(p, self.res, r, title=t or "Cumulative Drug Distribution", fs=7)
+            charts.draw_cumulative(p, self.res, r, title=t or None, fs=7)

@@ -7,6 +7,7 @@ from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPen, QBrush, QFontMetricsF
 
 from .engine import probit, NA
+from .i18n import tr
 
 BLUE = QColor(40, 90, 200)
 RED = QColor(220, 30, 30)
@@ -31,7 +32,8 @@ def _font(p: QPainter, size: float, bold=False):
     return QFontMetricsF(f, p.device())
 
 
-def draw_probit(p: QPainter, rect: QRectF, res, title="Log-Probit Plot", fs=7.0):
+def draw_probit(p: QPainter, rect: QRectF, res, title=None, fs=7.0):
+    title = title or tr("Log-Probit Plot")
     """Cumulative % undersize (probit 3–7) vs particle size (log 0.1–10 µm)."""
     p.save()
     fm = _font(p, fs)
@@ -80,12 +82,12 @@ def draw_probit(p: QPainter, rect: QRectF, res, title="Log-Probit Plot", fs=7.0)
                 p.drawLine(QPointF(xs, plot.bottom()), QPointF(xs, plot.bottom() + lh * 0.15))
         dec += 1
     p.drawText(QRectF(plot.left(), plot.bottom() + lh * 1.25, plot.width(), lh),
-               Qt.AlignHCenter, "Particle Size [µm]")
+               Qt.AlignHCenter, tr("Particle Size [µm]"))
     p.save()
     p.translate(rect.left() + lh * 0.1, plot.center().y())
     p.rotate(-90)
     p.drawText(QRectF(-plot.height() / 2 - lh * 2, 0, plot.height() + lh * 4, lh),
-               Qt.AlignHCenter, "Cumulative % UnderSize")
+               Qt.AlignHCenter, tr("Cumulative % UnderSize"))
     p.restore()
     p.drawText(QRectF(plot.left(), rect.top(), plot.width(), lh), Qt.AlignHCenter, title)
 
@@ -123,9 +125,10 @@ def draw_probit(p: QPainter, rect: QRectF, res, title="Log-Probit Plot", fs=7.0)
     p.restore()
 
 
-def draw_deposition(p: QPainter, ds, res, rect: QRectF, title="Drug Distribution per Discharge",
+def draw_deposition(p: QPainter, ds, res, rect: QRectF, title=None,
                     show_throat=True, fs=7.0, percent=False):
     """Bar chart of mass per location (filter on the left)."""
+    title = title or tr("Drug Distribution per Discharge")
     p.save()
     fm = _font(p, fs)
     lh = fm.height()
@@ -136,7 +139,7 @@ def draw_deposition(p: QPainter, ds, res, rect: QRectF, title="Drug Distribution
     vals = [res.masses_per_dose[r] if res else 0.0 for r in rows]
     if percent and res and res.total:
         vals = [100.0 * v / res.total for v in vals]
-    names = [ds.row_titles[r] for r in rows]
+    names = [tr(ds.row_titles[r]) for r in rows]
     maxlab = max((fm.horizontalAdvance(n) for n in names), default=lh)
     left = rect.left() + lh * 3.2
     bottom = rect.bottom() - maxlab - lh * 1.6
@@ -168,19 +171,20 @@ def draw_deposition(p: QPainter, ds, res, rect: QRectF, title="Drug Distribution
         p.drawText(QRectF(-maxlab, -lh, maxlab, lh), Qt.AlignRight | Qt.AlignVCenter, nm)
         p.restore()
     p.setPen(QPen(Qt.black, 0))
-    p.drawText(QRectF(plot.left(), rect.bottom() - lh, plot.width(), lh), Qt.AlignHCenter, "Location")
+    p.drawText(QRectF(plot.left(), rect.bottom() - lh, plot.width(), lh), Qt.AlignHCenter, tr("Location"))
     p.save()
     p.translate(rect.left() + lh * 0.1, plot.center().y())
     p.rotate(-90)
     unit = "%" if percent else ds.unit
     p.drawText(QRectF(-plot.height() / 2 - lh * 2, 0, plot.height() + lh * 4, lh),
-               Qt.AlignHCenter, f"Drug Deposition [{unit}]")
+               Qt.AlignHCenter, f"{tr('Drug Deposition')} [{unit}]")
     p.restore()
     p.drawText(QRectF(plot.left(), rect.top(), plot.width(), lh), Qt.AlignHCenter, title)
     p.restore()
 
 
-def draw_cumulative(p: QPainter, res, rect: QRectF, title="Cumulative Drug Distribution", fs=7.0):
+def draw_cumulative(p: QPainter, res, rect: QRectF, title=None, fs=7.0):
+    title = title or tr("Cumulative Drug Distribution")
     """Cumulative % undersize versus upper aerodynamic diameter."""
     p.save()
     fm = _font(p, fs)
@@ -208,12 +212,12 @@ def draw_cumulative(p: QPainter, res, rect: QRectF, title="Cumulative Drug Distr
         xy.append(QPointF(x, y))
         p.drawText(QRectF(x - step / 2, plot.bottom() + lh * 0.2, step, lh), Qt.AlignHCenter, f"{d:.3g}")
     p.drawText(QRectF(plot.left(), plot.bottom() + lh * 1.3, plot.width(), lh),
-               Qt.AlignHCenter, "Upper Aerodynamic Diam. [µm]")
+               Qt.AlignHCenter, tr("Upper Aerodynamic Diam. [µm]"))
     p.save()
     p.translate(rect.left() + lh * 0.1, plot.center().y())
     p.rotate(-90)
     p.drawText(QRectF(-plot.height() / 2 - lh * 2, 0, plot.height() + lh * 4, lh),
-               Qt.AlignHCenter, "Drug Deposition [%]")
+               Qt.AlignHCenter, tr("Drug Deposition") + " [%]")
     p.restore()
     p.drawText(QRectF(plot.left(), rect.top(), plot.width(), lh), Qt.AlignHCenter, title)
     if xy:

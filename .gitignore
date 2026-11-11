@@ -7,3 +7,4 @@ __pycache__/
 installer/Output/
 *.spec.bak
 .DS_Store
+release/
