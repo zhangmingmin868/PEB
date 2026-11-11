@@ -29,6 +29,11 @@ jobs:
           QT_QPA_PLATFORM: offscreen
         run: python tests/selftest.py --ui
 
+      - name: PBE validation (FDA example + Excel workbook)
+        run: |
+          pip install scipy
+          python tests/validate_pbe.py
+
       - name: Build LabDream.exe
         run: pyinstaller --noconfirm --clean labdream.spec
 
@@ -43,11 +48,11 @@ jobs:
 
       - name: Zip portable version
         shell: pwsh
-        run: Compress-Archive -Path dist\LabDream\* -DestinationPath LabDream_2.0_portable.zip
+        run: Compress-Archive -Path dist\LabDream\* -DestinationPath LabDream_3.0_portable.zip
 
       - uses: actions/upload-artifact@v4
         with:
-          name: LabDream-Windows-2.0
+          name: LabDream-Windows-3.0
           path: |
-            installer/Output/LabDream_Setup_2.0.exe
-            LabDream_2.0_portable.zip
+            installer/Output/LabDream_Setup_3.0.exe
+            LabDream_3.0_portable.zip

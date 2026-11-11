@@ -188,9 +188,85 @@ def ui_tests():
     print("ui tests passed")
 
 
+def pbe_ui_tests():
+    """Module selection, PBE editor, e-signature workflow and PDF report (offscreen)."""
+    import csv
+    from PySide6.QtGui import QPdfWriter
+    from PySide6.QtWidgets import QApplication
+    from labdream import pbe
+    from labdream.i18n import set_language
+    from labdream.pbe_report import PbeReport
+    from labdream.ui.home import HomeWindow
+    from labdream.ui.pbe_window import PbeEditor, PbeMainWindow, SignDialog
+
+    app = QApplication.instance() or QApplication(sys.argv)
+    tmp = tempfile.mkdtemp()
+    st = session.init(os.path.join(tmp, "pbe.db"))
+    st.create_user("SYSTEM", "admin", "Admin", "admin", "secret123", must_change=False)
+    st.create_user("admin", "ana", "Ana Lyst", "analyst", "secret123", must_change=False)
+    st.create_user("admin", "rev", "Rev Iewer", "reviewer", "secret123", must_change=False)
+    rows = list(csv.reader(open(os.path.join(os.path.dirname(__file__), "data", "fda_budesonide_example.csv"))))
+    R, T, m, names = pbe.parse_long_table(rows)
+    for lang in ("zh", "es", "fr", "en"):
+        set_language(lang)
+        session.user = st.get("admin")
+        h = HomeWindow(); h._leaving = True; h.close()
+        w = PbeMainWindow(); w._leaving = True; w.close()
+        study = pbe.PbeStudy(m=m, reference=R, test=T, ln_transform=False, stage_names=names + ["", "", ""],
+                             parameter="Delivered dose", title="FDA example")
+        ed = PbeEditor(study, None)
+        ed.show()
+        for i in range(4):
+            ed.tabs.setCurrentIndex(i)
+            app.processEvents()
+        check("PASSED" in ed.results.toPlainText() or "通过" in ed.results.toPlainText()
+              or "CUMPLE" in ed.results.toPlainText() or "CONFORME" in ed.results.toPlainText(), "result shown")
+        pdf = os.path.join(tmp, f"pbe_{lang}.pdf")
+        wr = QPdfWriter(pdf); wr.setResolution(150)
+        PbeReport(study, printed_by="admin").render(wr)
+        del wr
+        check(os.path.getsize(pdf) > 5000, "empty PBE report")
+        ed.modified = False
+        ed.close()
+
+    # e-signature workflow: analyst performs, reviewer reviews; change invalidates
+    path = os.path.join(tmp, "study.pbe")
+    session.user = st.get("ana")
+    study = pbe.PbeStudy(m=m, reference=pbe.clone(pbe.PbeStudy(reference=R)).reference, test=T, ln_transform=False)
+    ed = PbeEditor(study, None)
+    ed._write(path)
+    d = SignDialog(ed.st, ed)
+    d.pw.setText("wrong-pw1")
+    d._ok()
+    check(d.sig is None, "wrong password must not sign")
+    d.pw.setText("secret123")
+    d._ok()
+    check(d.sig is not None and d.sig.meaning == "performed", "analyst signs performed")
+    ed.st.signatures.append(d.sig)
+    pbe.save(ed.st, path)
+    ed.close()
+    session.user = st.get("rev")
+    loaded = pbe.load(path)
+    check(len(loaded.valid_signatures()) == 1, "signature valid after reload")
+    d = SignDialog(loaded)
+    d.pw.setText("secret123")
+    d._ok()
+    check(d.sig is not None and d.sig.meaning == "reviewed", "reviewer signs reviewed")
+    loaded.signatures.append(d.sig)
+    loaded.test[0].containers[0].values[0] = 1.0
+    check(len(loaded.valid_signatures()) == 0, "change must invalidate signatures")
+    acts = {r["action"] for r in st.records(limit=10000)}
+    for a in ("FILE_CREATED", "SIGNATURE_FAILED", "LOGIN_FAILED"):
+        check(a in acts, f"audit trail missing {a}")
+    ok, n, _ = st.verify()
+    check(ok, "audit chain")
+    print(f"pbe ui tests passed ({n} audit records)")
+
+
 if __name__ == "__main__":
     engine_tests()
     ecd_tests()
     security_tests()
     if "--ui" in sys.argv:
         ui_tests()
+        pbe_ui_tests()

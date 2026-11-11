@@ -476,6 +476,10 @@ _T = [
      "Diam. aérodynamique supérieur [µm]"),
 ]
 
+from .translations_pbe import T_PBE  # noqa: E402
+
+_T += T_PBE
+
 _IDX = {"zh": 1, "es": 2, "fr": 3}
 TRANSLATIONS = {"en": {}}
 for lang in _IDX:

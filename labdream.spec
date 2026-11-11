@@ -1,4 +1,4 @@
-# PyInstaller spec for LabDream Version 1.0 (Windows and macOS)
+# PyInstaller spec for LabDream Version 3.0 (APSD + PBE modules) (Windows and macOS)
 # Build:  pyinstaller --noconfirm --clean labdream.spec
 import sys
 
@@ -13,7 +13,7 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[("assets/labdream.png", "assets")],
-    hiddenimports=["PySide6.QtPrintSupport"],
+    hiddenimports=["PySide6.QtPrintSupport", "openpyxl"],
     excludes=["tkinter", "PySide6.QtWebEngineCore", "PySide6.QtQml", "PySide6.QtQuick",
               "PySide6.Qt3DCore", "PySide6.QtMultimedia"],
     noarchive=False,
@@ -44,8 +44,8 @@ if sys.platform == "darwin":
         info_plist={
             "CFBundleName": "LabDream",
             "CFBundleDisplayName": "LabDream",
-            "CFBundleShortVersionString": "2.0",
-            "CFBundleVersion": "2.0",
+            "CFBundleShortVersionString": "3.0",
+            "CFBundleVersion": "3.0",
             "NSHighResolutionCapable": True,
         },
     )

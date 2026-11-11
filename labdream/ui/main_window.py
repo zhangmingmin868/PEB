@@ -18,8 +18,10 @@ from .wizard import DataWizard
 
 
 class MainWindow(QMainWindow):
+    """Impactor data analysis (APSD) module."""
     logout_requested = Signal()
     language_changed = Signal()
+    home_requested = Signal()
 
     def __init__(self):
         super().__init__()
@@ -53,6 +55,7 @@ class MainWindow(QMainWindow):
                    (tr("&Set-up (Templates)"), self.setup, session.can("templates")),
                    (tr("&User Management"), self.users, session.can("manage_users")),
                    (tr("&Audit Trail"), self.audit, session.can("view_audit")),
+                   (tr("Switch &Module"), self.go_home, True),
                    (tr("E&xit"), self.close, True)]
         for text, fn, enabled in buttons:
             b = QPushButton(text)
@@ -75,6 +78,7 @@ class MainWindow(QMainWindow):
         self._act(m, tr("New…"), self.new_data, "Ctrl+N", session.can("edit_data"))
         self._act(m, tr("Open…"), self.open_file, "Ctrl+O")
         m.addSeparator()
+        self._act(m, tr("Switch Module"), self.go_home)
         self._act(m, tr("Log Out"), self.logout)
         self._act(m, tr("Exit"), self.close, "Ctrl+Q")
         um = self.menuBar().addMenu(tr("&Users"))
@@ -170,6 +174,10 @@ class MainWindow(QMainWindow):
         self.settings.setValue("language", code)
         session.log("LANGUAGE_CHANGED", code, {})
         self.language_changed.emit()
+
+    def go_home(self):
+        self._logging_out = True
+        self.home_requested.emit()
 
     def logout(self):
         self._logging_out = True

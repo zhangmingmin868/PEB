@@ -1,10 +1,10 @@
-; Inno Setup script for LabDream Version 1.0
+; Inno Setup script for LabDream Version 3.0
 ; Build after PyInstaller:  iscc installer\labdream.iss
-; Output: installer\Output\LabDream_Setup_1.0.exe
+; Output: installer\Output\LabDream_Setup_3.0.exe
 
 #define AppName "LabDream"
-#define AppVersion "2.0"
-#define AppFullName "LabDream Version 2.0"
+#define AppVersion "3.0"
+#define AppFullName "LabDream Version 3.0"
 #define AppExe "LabDream.exe"
 
 [Setup]
@@ -28,9 +28,9 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequiredOverridesAllowed=dialog
 ChangesAssociations=yes
-VersionInfoVersion=2.0.0.0
+VersionInfoVersion=3.0.0.0
 VersionInfoProductName={#AppName}
-VersionInfoProductVersion=2.0.0.0
+VersionInfoProductVersion=3.0.0.0
 VersionInfoProductTextVersion={#AppFullName}
 
 [Languages]
@@ -38,7 +38,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
-Name: "assoc"; Description: "Open .ldd data files with LabDream"; GroupDescription: "File types:"
+Name: "assoc"; Description: "Open .ldd / .pbe data files with LabDream"; GroupDescription: "File types:"
 
 [Dirs]
 ; shared user database and audit trail, writable by all users of the PC
@@ -57,6 +57,9 @@ Root: HKA; Subkey: "Software\Classes\.ldd"; ValueType: string; ValueName: ""; Va
 Root: HKA; Subkey: "Software\Classes\LabDream.Data"; ValueType: string; ValueName: ""; ValueData: "LabDream data file"; Flags: uninsdeletekey; Tasks: assoc
 Root: HKA; Subkey: "Software\Classes\LabDream.Data\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#AppExe},0"; Tasks: assoc
 Root: HKA; Subkey: "Software\Classes\LabDream.Data\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExe}"" ""%1"""; Tasks: assoc
+Root: HKA; Subkey: "Software\Classes\.pbe"; ValueType: string; ValueName: ""; ValueData: "LabDream.PBE"; Flags: uninsdeletevalue; Tasks: assoc
+Root: HKA; Subkey: "Software\Classes\LabDream.PBE"; ValueType: string; ValueName: ""; ValueData: "LabDream PBE study"; Flags: uninsdeletekey; Tasks: assoc
+Root: HKA; Subkey: "Software\Classes\LabDream.PBE\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#AppExe},0"; Tasks: assoc
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent

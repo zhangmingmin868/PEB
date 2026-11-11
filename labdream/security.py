@@ -33,9 +33,10 @@ PBKDF2_ROUNDS = 200_000
 GENESIS = "0" * 64
 
 PERMISSIONS = {
-    ROLE_ADMIN: {"edit_data", "maintenance", "manage_users", "view_audit", "templates", "print", "export"},
-    ROLE_ANALYST: {"edit_data", "print", "export"},
-    ROLE_REVIEWER: {"view_audit", "print", "export"},
+    ROLE_ADMIN: {"edit_data", "maintenance", "manage_users", "view_audit", "templates", "print", "export",
+                 "sign_performed", "sign_reviewed", "sign_approved", "modules"},
+    ROLE_ANALYST: {"edit_data", "print", "export", "sign_performed"},
+    ROLE_REVIEWER: {"view_audit", "print", "export", "sign_reviewed", "sign_approved"},
 }
 
 
@@ -244,6 +245,14 @@ class Store:
             self.db.commit()
             self.log(u.username, "LOGIN", u.username, {})
         return self.get(u.username)
+
+    def verify_signature(self, username: str, password: str) -> User:
+        """21 CFR 11.200(a): re-authenticate both signature components (user ID +
+        password) at the time of signing.  Failures count towards the lock-out."""
+        u = self.authenticate(username, password, log_success=False)
+        self.db.execute("UPDATE users SET failed=0 WHERE username=?", (u.username,))
+        self.db.commit()
+        return u
 
     # ------------------------------------------------------------------ audit
     def log(self, username: str, action: str, target: str = "", details=None):
