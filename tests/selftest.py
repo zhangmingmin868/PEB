@@ -289,3 +289,8 @@ if __name__ == "__main__":
         if os.environ.get("GITHUB_ACTIONS"):
             print("::error title=selftest::" + tb.replace("%", "%25").replace("\r", "").replace("\n", "%0A"))
         sys.exit(1)
+    # All tests passed. Skip interpreter teardown: destroying leftover Qt
+    # widgets at exit can crash on Windows and turn a pass into exit code 1.
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(0)
