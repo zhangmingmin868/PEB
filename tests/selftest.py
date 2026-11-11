@@ -291,6 +291,8 @@ if __name__ == "__main__":
         sys.exit(1)
     # All tests passed. Skip interpreter teardown: destroying leftover Qt
     # widgets at exit can crash on Windows and turn a pass into exit code 1.
+    with open("selftest_passed.txt", "w") as f:
+        f.write(" ".join(sys.argv[1:]) + " passed\n")
     sys.stdout.flush()
     sys.stderr.flush()
     os._exit(0)

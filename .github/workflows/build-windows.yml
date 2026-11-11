@@ -28,12 +28,18 @@ jobs:
         run: python tests/selftest.py
 
       - name: UI smoke test (offscreen)
-        shell: cmd
+        shell: pwsh
         env:
           QT_QPA_PLATFORM: offscreen
+        # The offscreen Qt plugin can crash while the process unloads on Windows
+        # (after all tests have finished). The test writes a marker file only
+        # when every check passed, so judge the step by that marker.
         run: |
+          Remove-Item selftest_passed.txt -ErrorAction SilentlyContinue
           python tests/selftest.py --ui
-          echo selftest exit code %ERRORLEVEL%
+          Write-Host "selftest process exit code $LASTEXITCODE"
+          if (-not (Test-Path selftest_passed.txt)) { Write-Error "UI self-test failed"; exit 1 }
+          exit 0
 
       - name: PBE validation (FDA example + Excel workbook)
         run: |

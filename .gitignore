@@ -8,3 +8,4 @@ installer/Output/
 *.spec.bak
 .DS_Store
 release/
+selftest_passed.txt
