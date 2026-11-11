@@ -263,13 +263,20 @@ def pbe_ui_tests():
     print(f"pbe ui tests passed ({n} audit records)")
 
 
+def _note(msg):
+    if os.environ.get("GITHUB_ACTIONS"):
+        print("::notice title=selftest::" + msg, flush=True)
+
+
 def _main():
-    engine_tests()
-    ecd_tests()
-    security_tests()
+    import faulthandler
+    faulthandler.enable()
+    engine_tests(); _note("engine ok")
+    ecd_tests(); _note("ecd ok")
+    security_tests(); _note("security ok")
     if "--ui" in sys.argv:
-        ui_tests()
-        pbe_ui_tests()
+        ui_tests(); _note("apsd ui ok")
+        pbe_ui_tests(); _note("pbe ui ok")
 
 
 if __name__ == "__main__":
