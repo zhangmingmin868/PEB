@@ -76,7 +76,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v3.1-build-${{ github.run_number }}
-          name: LabDream Version 3.1 (Lemonix INHA Workstation: APSD + PBE) - build ${{ github.run_number }}
+          name: LabDream Version 3.1 (Lemonix INHA Workstation - APSD + PBE) - build ${{ github.run_number }}
           body: Windows installer and portable version built from ${{ github.sha }}.
           files: |
             installer/Output/LabDream_Setup_3.1.exe
