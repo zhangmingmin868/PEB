@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox, QDateEdi
 from .. import session
 from ..fileio import APP_VERSION
 from ..i18n import LANGUAGES, language, set_language, tr, trf
-from ..security import MIN_PASSWORD, ROLES, AuthError, password_problem
+from ..security import ROLES, AuthError, password_problem, policy
 from .dialogs import ok_cancel
 
 PW_MESSAGES = {
@@ -26,11 +26,13 @@ PW_MESSAGES = {
     "bad_login": "Wrong user name or password.",
     "locked": "This account is locked after too many failed attempts. Ask an administrator to unlock it.",
     "inactive": "This account is deactivated.",
+    "pw_complex": "The password needs at least 3 of: upper-case letters, lower-case letters, digits, symbols.",
+    "pw_history": "The new password must not match one of the recently used passwords.",
 }
 
 
 def message(key: str) -> str:
-    return trf(PW_MESSAGES.get(key, key), n=MIN_PASSWORD)
+    return trf(PW_MESSAGES.get(key, key), n=policy('pw_min_len'))
 
 
 def _pw(edit_parent=None):
@@ -108,7 +110,7 @@ class FirstAdminDialog(QDialog):
         self.setWindowTitle(f"{APP_VERSION} – {tr('Create Administrator')}")
         lay = QVBoxLayout(self)
         info = QLabel(tr("No users exist yet. Create the first administrator account.")
-                      + "\n" + trf("Passwords need at least {n} characters with letters and digits.", n=MIN_PASSWORD))
+                      + "\n" + trf("Passwords need at least {n} characters with letters and digits.", n=policy('pw_min_len')))
         info.setWordWrap(True)
         lay.addWidget(info)
         form = QFormLayout()
@@ -154,7 +156,7 @@ class ChangePasswordDialog(QDialog):
         form.addRow(tr("New password"), self.new)
         form.addRow(tr("Confirm password"), self.new2)
         lay.addLayout(form)
-        lay.addWidget(QLabel(trf("Passwords need at least {n} characters with letters and digits.", n=MIN_PASSWORD)))
+        lay.addWidget(QLabel(trf("Passwords need at least {n} characters with letters and digits.", n=policy('pw_min_len'))))
         self.err = QLabel()
         self.err.setStyleSheet("color:#c00")
         self.err.setWordWrap(True)

@@ -1,6 +1,6 @@
 #!/bin/bash
 # ------------------------------------------------------------------
-#  Build LabDream Version 3.0 for macOS  ->  dist/LabDream.app
+#  Build LabDream Version 3.1 for macOS  ->  dist/LabDream.app
 #  Usage:  ./build_macos.sh
 # ------------------------------------------------------------------
 set -e

@@ -11,7 +11,7 @@ from .engine import analyse, mean_sd_rsd, NA, LOD
 from .model import Dataset, GROUP_OFF, GROUP_STAGE, HEADING_LABELS
 
 APP_NAME = "LabDream"
-APP_VERSION = "LabDream Version 3.0"
+APP_VERSION = "LabDream Version 3.1"
 NATIVE_EXT = ".ldd"
 
 

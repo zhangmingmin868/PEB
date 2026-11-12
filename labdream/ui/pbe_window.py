@@ -693,6 +693,8 @@ class PbeEditor(QDialog):
         self.st.signatures.append(s)
         self.st.revision += 1
         pbe.save(self.st, self.path)
+        from .. import records
+        records.register(records.MOD_PBE, self.path)
         self.saved_copy = copy.deepcopy(self.st)
         session.log("E_SIGNATURE", os.path.basename(self.path),
                     {"meaning": s.meaning, "full_name": s.full_name, "record_sha256": s.record_hash,
@@ -757,6 +759,8 @@ class PbeEditor(QDialog):
         except pbe.PbeError as e:
             details["result"] = f"not calculable: {e}"
         session.log("FILE_SAVED" if self.saved_copy is not None else "FILE_CREATED", os.path.basename(path), details)
+        from .. import records
+        records.register(records.MOD_PBE, path, details.get("result", ""))
         self.saved_copy = copy.deepcopy(st)
         self.path = path
         self.modified = False

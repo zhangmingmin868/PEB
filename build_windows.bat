@@ -1,6 +1,6 @@
 @echo off
 REM ------------------------------------------------------------------
-REM  Build LabDream Version 3.0 for Windows  ->  dist\LabDream\LabDream.exe
+REM  Build LabDream Version 3.1 for Windows  ->  dist\LabDream\LabDream.exe
 REM  Requirements: Python 3.9+ (64-bit) from python.org, "Add to PATH" ticked
 REM  Usage: double-click this file, or run it from a command prompt
 REM ------------------------------------------------------------------

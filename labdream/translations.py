@@ -477,8 +477,11 @@ _T = [
 ]
 
 from .translations_pbe import T_PBE  # noqa: E402
+from .translations_ws import T_WS  # noqa: E402
 
 _T += T_PBE
+_existing = {r[0] for r in _T}
+_T += [r for r in T_WS if r[0] not in _existing]
 
 _IDX = {"zh": 1, "es": 2, "fr": 3}
 TRANSLATIONS = {"en": {}}

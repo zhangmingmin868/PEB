@@ -1,10 +1,10 @@
-; Inno Setup script for LabDream Version 3.0
+; Inno Setup script for LabDream Version 3.1
 ; Build after PyInstaller:  iscc installer\labdream.iss
-; Output: installer\Output\LabDream_Setup_3.0.exe
+; Output: installer\Output\LabDream_Setup_3.1.exe
 
 #define AppName "LabDream"
-#define AppVersion "3.0"
-#define AppFullName "LabDream Version 3.0"
+#define AppVersion "3.1"
+#define AppFullName "LabDream Version 3.1"
 #define AppExe "LabDream.exe"
 
 [Setup]
@@ -28,9 +28,9 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequiredOverridesAllowed=dialog
 ChangesAssociations=yes
-VersionInfoVersion=3.0.0.0
+VersionInfoVersion=3.1.0.0
 VersionInfoProductName={#AppName}
-VersionInfoProductVersion=3.0.0.0
+VersionInfoProductVersion=3.1.0.0
 VersionInfoProductTextVersion={#AppFullName}
 
 [Languages]

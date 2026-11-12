@@ -1,4 +1,4 @@
-# PyInstaller spec for LabDream Version 3.0 (APSD + PBE modules) (Windows and macOS)
+# PyInstaller spec for LabDream Version 3.1 (APSD + PBE modules) (Windows and macOS)
 # Build:  pyinstaller --noconfirm --clean labdream.spec
 import sys
 
@@ -44,8 +44,8 @@ if sys.platform == "darwin":
         info_plist={
             "CFBundleName": "LabDream",
             "CFBundleDisplayName": "LabDream",
-            "CFBundleShortVersionString": "3.0",
-            "CFBundleVersion": "3.0",
+            "CFBundleShortVersionString": "3.1",
+            "CFBundleVersion": "3.1",
             "NSHighResolutionCapable": True,
         },
     )

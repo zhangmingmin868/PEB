@@ -1,4 +1,4 @@
-"""LabDream Version 3.0 – impactor data analysis (APSD) + PBE data processing.
+"""Lemonix INHA Workstation (LabDream 3.1) – impactor data analysis (APSD) + PBE data processing.
 
 Run:  python main.py
 """
@@ -15,6 +15,7 @@ from labdream.ui.home import MODULE_APSD, MODULE_PBE, MODULES, HomeWindow, modul
 from labdream.ui.main_window import MainWindow
 from labdream.ui.pbe_window import PbeMainWindow
 from labdream.ui.security_dialogs import FirstAdminDialog, LoginDialog
+from labdream.ui.workstation import Workstation
 
 
 class App:
@@ -45,24 +46,18 @@ class App:
             old.deleteLater()
 
     def show_main(self):
-        """After log-in: module selection (skipped when only one module is enabled)."""
-        enabled = [c for c in MODULES if module_enabled(c)]
-        if len(enabled) == 1:
-            self.open_module(enabled[0])
-            return
+        """After log-in: the workstation window (navigation Start / Method / Data / Report / ...)."""
         self.module = None
-        home = HomeWindow()
-        home.module_selected.connect(lambda c: self.open_module(c) if c else self.show_main())
-        home.logout_requested.connect(self.on_logout)
-        self._swap(home)
+        w = Workstation()
+        w.logout_requested.connect(self.on_logout)
+        self._swap(w)
 
-    def open_module(self, code):
+    def open_module(self, code):         # kept for the legacy module windows
         self.module = code
         w = PbeMainWindow() if code == MODULE_PBE else MainWindow()
         w.logout_requested.connect(self.on_logout)
         w.language_changed.connect(self.on_language)
         w.home_requested.connect(self.show_main)
-        QSettings("LabDream", "LabDream").setValue("last_module", code)
         self._swap(w)
 
     def on_logout(self):

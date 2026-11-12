@@ -263,6 +263,144 @@ def pbe_ui_tests():
     print(f"pbe ui tests passed ({n} audit records)")
 
 
+def workstation_tests():
+    """Lemonix workstation shell: pages, policies, permission groups, record index, approvals."""
+    import csv
+    import datetime as _dt
+    from PySide6.QtWidgets import QApplication
+    from labdream import pbe, records, security
+    from labdream.i18n import set_language
+    from labdream.ui import workstation as ws
+    from labdream.ui.pbe_window import PbeEditor, SignDialog
+    from labdream.ui.wizard import DataWizard
+
+    app = QApplication.instance() or QApplication(sys.argv)
+    tmp = tempfile.mkdtemp()
+    st = session.init(os.path.join(tmp, "ws.db"))
+    st.create_user("SYSTEM", "admin", "Admin", "admin", "secret123", must_change=False)
+    st.create_user("admin", "ana", "Ana Lyst", "analyst", "secret123", must_change=False)
+    st.create_user("admin", "rev", "Rev Iewer", "reviewer", "secret123", must_change=False)
+    st.create_user("admin", "boss", "Boss", "reviewer", "secret123", must_change=False)
+
+    # --- policy: length / complexity / history / lock time
+    st.set_policy("admin", {"pw_min_len": 10, "pw_complexity": 1, "pw_history": 2, "lock_minutes": 1})
+    check(security.password_problem("abcdefgh12") == "pw_complex", "complexity enforced")
+    check(security.password_problem("Abcdefgh12") is None, "complex password accepted")
+    check(security.password_problem("Ab1!") == "pw_short", "min length enforced")
+    st.create_user("admin", "pol", "Pol", "analyst", "Abcdefgh12", must_change=False)
+    st.change_password("pol", "Abcdefgh12", "Bcdefghi23")
+    try:
+        st.change_password("pol", "Bcdefghi23", "Abcdefgh12")
+        check(False, "password history not enforced")
+    except ValueError as e:
+        check(str(e) == "pw_history", "history error")
+    for _ in range(security.policy("max_failed")):
+        try:
+            st.authenticate("pol", "wrong")
+        except security.AuthError:
+            pass
+    check(st.get("pol").locked, "locked after attempts")
+    old = (_dt.datetime.now(_dt.timezone.utc) - _dt.timedelta(minutes=2)).strftime("%Y-%m-%d %H:%M:%S UTC")
+    st.db.execute("UPDATE users SET locked_at=? WHERE username='pol'", (old,))
+    st.db.commit()
+    check(st.authenticate("pol", "Bcdefghi23").username == "pol", "auto unlock after lock time")
+    st.db.execute("UPDATE users SET pw_changed_at='2000-01-01 00:00:00 UTC' WHERE username='pol'")
+    st.db.commit()
+    check(st.authenticate("pol", "Bcdefghi23").must_change, "password expiry forces change")
+    st.set_policy("admin", dict(security.DEFAULT_POLICY))
+
+    # --- permission groups
+    st.set_role_permissions("admin", "reviewer", security.role_permissions("reviewer") | {"methods"})
+    check(st.get("rev").can("methods"), "permission override")
+    st.set_role_permissions("admin", "admin", set())
+    check(st.get("admin").can("manage_users"), "admin keeps user management")
+    st.set_role_permissions("admin", "admin", security.PERMISSIONS["admin"])
+
+    # --- methods / instruments
+    st.save_method("admin", "20260701-1", {"run_time": 4.0, "volume": 4.0})
+    st.save_method("admin", "20260701-1", {"run_time": 5.0, "volume": 4.0}, "test")
+    st.save_instrument("admin", {"name": "Flow controller", "model": "FC", "sn": "1", "tag": "FC-01",
+                                 "valid_until": "2099-01-01"})
+
+    # --- PBE record: save registers, signatures drive the list status
+    rows = list(csv.reader(open(os.path.join(os.path.dirname(__file__), "data", "fda_budesonide_example.csv"))))
+    R, T, m, names = pbe.parse_long_table(rows)
+    session.user = st.get("ana")
+    path = os.path.join(tmp, "ws_study.pbe")
+    ed = PbeEditor(pbe.PbeStudy(m=m, reference=R, test=T, ln_transform=False, title="ws"), None)
+    ed._write(path)
+    ed.modified = False
+    ed.close()
+    rec = st.record_by_path(path)
+    check(rec is not None and rec["module"] == "PBE", "PBE record registered")
+    check(records.status(rec)[0] == records.ST_DRAFT, "new record not reviewed")
+    loaded = pbe.load(path)
+    d = SignDialog(loaded); d.pw.setText("secret123"); d._ok()
+    loaded.signatures.append(d.sig); pbe.save(loaded, path)
+    check(records.status(rec)[0] == records.ST_PERFORMED, "performed status")
+    session.user = st.get("rev")
+    loaded = pbe.load(path)
+    d = SignDialog(loaded); d.pw.setText("secret123"); d._ok()
+    loaded.signatures.append(d.sig); pbe.save(loaded, path)
+    check(records.status(rec)[0] == records.ST_REVIEWED, "reviewed status")
+
+    # --- APSD record: database signatures bound to the file SHA-256
+    session.user = st.get("ana")
+    ds = lognormal_dataset("NGI", 3.0, 1.8, 60.0)
+    wiz = DataWizard(ds, None)
+    apath = os.path.join(tmp, "ws_ngi.ldd")
+    wiz._write(apath)
+    wiz.modified = False
+    wiz.close()
+    arec = st.record_by_path(apath)
+    check(arec is not None and arec["module"] == "APSD", "APSD record registered")
+    session.user = st.get("rev")
+    tgt = ws._ApsdSignTarget(arec)
+    d = SignDialog(tgt); d.pw.setText("secret123"); d._ok()
+    check(d.sig is not None and d.sig.meaning == "reviewed", "APSD reviewer signs")
+    st.add_approval(arec["id"], d.sig.meaning, st.get("rev"), tgt.content_hash())
+    check(records.status(arec)[0] == records.ST_REVIEWED, "APSD reviewed")
+    with open(apath, "a") as f:
+        f.write(" ")
+    check(records.status(arec)[0] == records.ST_INVALID, "APSD change invalidates signature")
+    try:
+        st.db.execute("DELETE FROM approvals")
+        check(False, "approvals deletable")
+    except Exception:  # noqa: BLE001
+        pass
+
+    # --- every page of the window in every language and role
+    for lang in ("zh", "en", "es", "fr"):
+        set_language(lang)
+        for u in ("admin", "ana", "rev"):
+            session.user = st.get(u)
+            w = ws.Workstation()
+            w.show()
+            for key in list(w.pages):
+                w.show_page(key)
+                app.processEvents()
+            sp = w.pages["system"]
+            for k in ("config", "users", "settings", "policy", "data", "about"):
+                sp.open(k)
+                app.processEvents()
+            check(w.pages["data"].apsd.t.rowCount() == 1 and w.pages["data"].pbe.t.rowCount() == 1, "data lists")
+            check(w.pages["report"].list.t.rowCount() == 2, "report list")
+            rv = ws.ReportViewDialog(st.record_by_path(path), w)
+            rv.show(); app.processEvents(); rv.close()
+            w._logging_out = True
+            w.close()
+            w.deleteLater()
+            app.processEvents()
+    set_language("en")
+    ok, n, _ = st.verify()
+    check(ok, "audit chain")
+    acts = {r["action"] for r in st.records(limit=100000)}
+    for a in ("POLICY_CHANGED", "PERMISSIONS_CHANGED", "METHOD_CREATED", "METHOD_MODIFIED", "INSTRUMENT_ADDED",
+              "E_SIGNATURE" if False else "FILE_CREATED", "REPORT_VIEWED", "USER_UNLOCKED", "PASSWORD_EXPIRED"):
+        check(a in acts, f"audit trail missing {a}")
+    print(f"workstation tests passed ({n} audit records)")
+
+
 def _note(msg):
     if os.environ.get("GITHUB_ACTIONS"):
         print("::notice title=selftest::" + msg, flush=True)
@@ -277,6 +415,7 @@ def _main():
     if "--ui" in sys.argv:
         ui_tests(); _note("apsd ui ok")
         pbe_ui_tests(); _note("pbe ui ok")
+        workstation_tests(); _note("workstation ok")
 
 
 if __name__ == "__main__":

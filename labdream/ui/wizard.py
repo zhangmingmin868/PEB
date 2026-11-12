@@ -787,6 +787,8 @@ class DataWizard(QDialog):
                 details["more_changes"] = len(changes) - 500
         session.log("FILE_SAVED" if self.saved_copy is not None else "FILE_CREATED",
                     os.path.basename(path), details)
+        from .. import records
+        records.register(records.MOD_APSD, path, ds.dev.name)
         self.saved_copy = copy.deepcopy(ds)
         self.path = path
         self.modified = False
